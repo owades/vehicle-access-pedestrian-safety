@@ -91,22 +91,14 @@ census_tracts = tracts.merge(census_data, left_on='tract_num', right_on='tract_n
 
 ####### Import & process crash data #######
 
-# CHP SWITRS data: https://iswitrs.chp.ca.gov/Reports/jsp/CollisionReports.jsp
-# more info about SWITRS program: https://www.chp.ca.gov/programs-services/services-information/switrs-internet-statewide-integrated-traffic-records-system
+# CHP SWITRS/Berkeley TIMS data:  https://tims.berkeley.edu/tools/query/summary.php
+# Filtered for ped-invovled, 2015-2019 (note that 2019 data may not be complete)
+collisions = pandas.read_csv('Collisions.csv', low_memory=False)
 
-firsthalf_crashes = pandas.read_csv('CollisionRecords_firsthalf_19.csv', low_memory=False)
-secondhalf_crashes = pandas.read_csv('CollisionRecords_secondhalf_19.csv', low_memory=False)
+collisions = collisions[collisions['LATITUDE'].notna()]
+collisions = collisions[collisions['LONGITUDE'].notna()]
 
-# combine firsthalf and secondhalf:
-crashes_2019 = pandas.concat([firsthalf_crashes,secondhalf_crashes]).drop_duplicates().reset_index(drop=True)
-
-crashes_2019 = crashes_2019[crashes_2019['LATITUDE'].notna()]
-crashes_2019 = crashes_2019[crashes_2019['LONGITUDE'].notna()]
-
-# for some reason the CHP data had positive longitude values. Thankfully they only have data for one hemisphere
-crashes_2019['LONGITUDE'] *= -1
-
-crashes_2019 = crashes_2019[[
+collisions = collisions[[
 								'CASE_ID',
 								'ACCIDENT_YEAR',
 								'PROC_DATE',
@@ -120,32 +112,13 @@ crashes_2019 = crashes_2019[[
 								'LONGITUDE'
 								]]
 
-# print (crashes_2019.dtypes)
-crashes_2019 = crashes_2019.astype({
-                	'CASE_ID': int,
-					'ACCIDENT_YEAR': int,
-					'PROC_DATE': int,
-					'COLLISION_DATE': int,
-					'COLLISION_TIME': int,
-					'COUNT_PED_KILLED': int,
-					'COUNT_PED_INJURED': int,
-					'COUNT_BICYCLIST_KILLED': int,
-					'COUNT_BICYCLIST_INJURED': int,
-					'LATITUDE': float,
-					'LONGITUDE': float
-               	})
 
-# remove data from 2020:
-crashes_2019 = crashes_2019.loc[crashes_2019['COLLISION_DATE'] < 20200101]
+collisions_geo = geopandas.GeoDataFrame(
+    collisions, geometry=geopandas.points_from_xy(collisions['LONGITUDE'], collisions['LATITUDE']), crs="EPSG:4326")
 
-crashes_2019_geo = geopandas.GeoDataFrame(
-    crashes_2019, geometry=geopandas.points_from_xy(crashes_2019['LONGITUDE'], crashes_2019['LATITUDE']), crs="EPSG:4326")
-# filter for ped-invovled:
-ped_crashes_2019 = crashes_2019_geo.loc[crashes_2019['COUNT_PED_KILLED'] + crashes_2019['COUNT_PED_INJURED'] > 0]
-# ped_crashes_2019_mini = ped_crashes_2019.head()
+# 'spatial join' is very cool function - before I found it was trying to use a nested for loop...
+crashes_with_tracts = geopandas.sjoin(collisions_geo, census_tracts, how="inner")
 
-
-crashes_with_tracts = geopandas.sjoin(ped_crashes_2019, census_tracts, how="inner")
 # crashes_with_census.to_csv('crashes_with_census.csv',index=False,header=True)
 
 tract_crash_counts = crashes_with_tracts['tract_num'].value_counts().rename_axis('tract_num').reset_index(name='crashes')
@@ -164,8 +137,6 @@ census_tract_crashes = census_tract_crashes.loc[census_tract_crashes['tract_num'
 # census_tract_crashes.to_csv('census_tract_crashes.csv',index=False,header=True)
 
 ### Create map of normalized pedestrian crashes by tract ####:
-print(census_tract_crashes['ped_crashes_per_1k_households'].min())
-print(census_tract_crashes['ped_crashes_per_1k_households'].max())
 mapper = linear_cmap(field_name='ped_crashes_per_1k_households', palette=list(reversed(Cividis256)) ,low=census_tract_crashes['ped_crashes_per_1k_households'].min() ,high=census_tract_crashes['ped_crashes_per_1k_households'].max())
 
 # use list(reversed()) to flip a pallcensus_tract_crashesette:
@@ -186,14 +157,16 @@ p.xaxis.major_label_text_font_size = '0pt'  # turn off x-axis tick labels
 p.yaxis.major_label_text_font_size = '0pt'  # turn off y-axis tick labels
 
 geo_source = GeoJSONDataSource(geojson=census_tract_crashes.to_json()) #map will contain our census tract data
+crash_geo_source = GeoJSONDataSource(geojson=collisions_geo.to_json()) #map will contain our census tract data
 
 p.patches('xs', 'ys', fill_color =mapper, line_color='black', fill_alpha=0.8, source=geo_source) # creates "patches" (ie shapes) based on our geo data
+p.circle(size=5, fill_color="red", fill_alpha=1, line_alpha=0, source=crash_geo_source)
 color_bar = ColorBar(color_mapper=mapper['transform'], width=8,  location=(0,0))
 p.add_layout(color_bar, 'right')
 
 TOOLTIPS = [
     ('Tract Number', '@tract_num'),
-	('Ped crashes per k households', '@ped_crashes_per_1k_households'),
+	('Ped crashes per 1k households', '@ped_crashes_per_1k_households'),
     ('Homes','@total_housing_units')
 ]
 
