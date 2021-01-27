@@ -95,8 +95,8 @@ census_tracts = tracts.merge(census_data, left_on='tract_num', right_on='tract_n
 # Filtered for ped-invovled, 2015-2019 (note that 2019 data may not be complete)
 collisions = pandas.read_csv('Collisions.csv', low_memory=False)
 
-collisions = collisions[collisions['LATITUDE'].notna()]
-collisions = collisions[collisions['LONGITUDE'].notna()]
+collisions = collisions[collisions['POINT_Y'].notna()]
+collisions = collisions[collisions['POINT_X'].notna()]
 
 collisions = collisions[[
 								'CASE_ID',
@@ -108,17 +108,16 @@ collisions = collisions[[
 								'COUNT_PED_INJURED',
 								'COUNT_BICYCLIST_KILLED',
 								'COUNT_BICYCLIST_INJURED',
-								'LATITUDE',
-								'LONGITUDE'
+								'POINT_Y',
+								'POINT_X'
 								]]
 
-
 collisions_geo = geopandas.GeoDataFrame(
-    collisions, geometry=geopandas.points_from_xy(collisions['LONGITUDE'], collisions['LATITUDE']), crs="EPSG:4326")
+    collisions, geometry=geopandas.points_from_xy(collisions['POINT_X'], collisions['POINT_Y']), crs="EPSG:4326")
 
 # 'spatial join' is very cool function - before I found it was trying to use a nested for loop...
 crashes_with_tracts = geopandas.sjoin(collisions_geo, census_tracts, how="inner")
-
+# crashes_with_tracts = geopandas.sjoin(collisions_geo, census_tracts)
 # crashes_with_census.to_csv('crashes_with_census.csv',index=False,header=True)
 
 tract_crash_counts = crashes_with_tracts['tract_num'].value_counts().rename_axis('tract_num').reset_index(name='crashes')
@@ -132,17 +131,17 @@ census_tract_crashes['ped_crashes_per_1k_households'] = census_tract_crashes['pe
 census_tract_crashes['ped_crashes_per_1k_households'] = census_tract_crashes['ped_crashes_per_1k_households'].fillna(0)
 
 #temporary filter for anomolous value:
-census_tract_crashes = census_tract_crashes.loc[census_tract_crashes['tract_num'] != '4226']
-
-# census_tract_crashes.to_csv('census_tract_crashes.csv',index=False,header=True)
+census_tract_crashes = census_tract_crashes.loc[census_tract_crashes['total_housing_units'] > 500]
+# census_tract_crashes = census_tract_crashes.loc[census_tract_crashes['CASE_ID'] == '8096814']
+census_tract_crashes.to_csv('census_tract_crashes.csv',index=False,header=True)
 
 ### Create map of normalized pedestrian crashes by tract ####:
-mapper = linear_cmap(field_name='ped_crashes_per_1k_households', palette=list(reversed(Cividis256)) ,low=census_tract_crashes['ped_crashes_per_1k_households'].min() ,high=census_tract_crashes['ped_crashes_per_1k_households'].max())
+mapper = linear_cmap(field_name='ped_crashes_per_1k_households', palette=Cividis256 ,low=census_tract_crashes['ped_crashes_per_1k_households'].min() ,high=census_tract_crashes['ped_crashes_per_1k_households'].max())
 
 # use list(reversed()) to flip a pallcensus_tract_crashesette:
 # list(reversed(Blues9))
 
-map_options = GMapOptions(lat=37.84, lng=-122.2835, map_type="hybrid", zoom=12)
+map_options = GMapOptions(lat=37.698882, lng=-122.115695, map_type="hybrid", zoom=11)
 API_KEY = os.getenv('GMAP_API_KEY')
 p = gmap(API_KEY, map_options,plot_width=1000, plot_height=1000) #creates our map!
 
@@ -160,13 +159,14 @@ geo_source = GeoJSONDataSource(geojson=census_tract_crashes.to_json()) #map will
 crash_geo_source = GeoJSONDataSource(geojson=collisions_geo.to_json()) #map will contain our census tract data
 
 p.patches('xs', 'ys', fill_color =mapper, line_color='black', fill_alpha=0.8, source=geo_source) # creates "patches" (ie shapes) based on our geo data
-p.circle(size=5, fill_color="red", fill_alpha=1, line_alpha=0, source=crash_geo_source)
+p.circle(size=1, fill_color="red", fill_alpha=1, line_alpha=0, source=crash_geo_source)
 color_bar = ColorBar(color_mapper=mapper['transform'], width=8,  location=(0,0))
 p.add_layout(color_bar, 'right')
 
 TOOLTIPS = [
     ('Tract Number', '@tract_num'),
 	('Ped crashes per 1k households', '@ped_crashes_per_1k_households'),
+	('Crashes with pedestrians', '@crashes'),
     ('Homes','@total_housing_units')
 ]
 
@@ -178,10 +178,10 @@ show(p)
 
 mapper = linear_cmap(field_name='has_a_vehicle_percent', palette=list(reversed(Cividis256)) ,low=census_data['has_a_vehicle_percent'].min() ,high=census_data['has_a_vehicle_percent'].max())
 
-# use list(reversed()) to flip a pallcensus_tract_crashesette:
+# use list(reversed()) to flip a pallette:
 # list(reversed(Blues9))
 
-map_options = GMapOptions(lat=37.84, lng=-122.2835, map_type="hybrid", zoom=12)
+map_options = GMapOptions(lat=37.698882, lng=-122.115695, map_type="hybrid", zoom=11)
 API_KEY = os.getenv('GMAP_API_KEY')
 q = gmap(API_KEY, map_options,plot_width=1000, plot_height=1000) #creates our map!
 
