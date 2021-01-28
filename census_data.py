@@ -149,7 +149,7 @@ mapper = linear_cmap(field_name='ped_crashes_per_1k_households', palette=Cividis
 # p = gmap(API_KEY, map_options,plot_width=500, plot_height=500) #creates our map!
 
 p = figure(
-			title="Vehicle Crashes Involving Pedestrians per 1k Households (2015-2019)",
+			title="Alameda County: Vehicle Crashes Involving Pedestrians per 1k Households (2015-2019)",
 			background_fill_color="white",
 			toolbar_location=None,
 			x_axis_type="mercator",
@@ -201,7 +201,7 @@ mapper = linear_cmap(field_name='has_a_vehicle_percent', palette=list(reversed(C
 # q = gmap(API_KEY, map_options,plot_width=500, plot_height=500) #creates our map!
 
 q = figure(
-			title="Percent of Households with Access to 1 or more Cars (2019)",
+			title="Alameda County: Percent of Households with Access to 1 or more Cars (2019)",
 			background_fill_color="white",
 			toolbar_location=None,
 			x_axis_type="mercator",
