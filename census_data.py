@@ -228,6 +228,7 @@ color_bar = ColorBar(color_mapper=mapper['transform'], width=8, location=(0,0))
 q.add_layout(color_bar, 'right')
 
 TOOLTIPS = [
+	('Tract Number', '@tract_num'),
     ('Has a vehicle percent', '@has_a_vehicle_percent'),
     ('Homes','@total_housing_units')
 ]
