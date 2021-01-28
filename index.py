@@ -234,6 +234,4 @@ TOOLTIPS = [
 
 q.add_tools( HoverTool(tooltips=TOOLTIPS))
 
-
-output_file('index.html', title='Alameda County Car Ownership vs Pedestrian Collisions')
 show(row(p,q))
