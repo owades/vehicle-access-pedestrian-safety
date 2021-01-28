@@ -1,6 +1,6 @@
 import pandas
 import geopandas
-from bokeh.models import GeoJSONDataSource, LinearColorMapper, CategoricalColorMapper, GMapOptions, ColorBar, ColumnDataSource, HoverTool
+from bokeh.models import GeoJSONDataSource, LinearColorMapper, CategoricalColorMapper, GMapOptions, ColorBar, ColumnDataSource, HoverTool, Label
 from bokeh.plotting import figure, gmap, output_file, show
 from bokeh.io import output_notebook, show, output_file
 from bokeh.palettes import Blues9, Cividis256
